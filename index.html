@@ -3,506 +3,318 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>팀원 업무 로드 및 프로젝트 배정 대시보드</title>
-    
-    <!-- Tailwind CSS -->
+    <title>Team Optimizer - 실전 업무 관리 도구</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-    <!-- Chosen Palette: Warm Neutrals with Soft Accents (Stone background, Indigo/Coral/Teal data points) -->
-    <!-- Application Structure Plan: The SPA is structured as a top-down managerial dashboard. It begins with a macro-level view (Chart Section) to immediately prove the success of the workload balancing strategy. It then moves to a micro-level interactive grid (Team Member Details) where users can filter by assignment status to see individual impacts. Finally, it provides a reference section (Project Master List) detailing the new initiatives. This structure supports a logical flow from "understanding the overall impact" to "examining individual changes" and "reviewing the actual work." -->
-    <!-- Visualization & Content Choices: 
-         1. Workload Comparison Chart -> Goal: Compare (Current vs Final Load) -> Grouped Bar Chart (Chart.js) -> Interaction: Hover tooltips & Sorting -> Justification: The most effective way to show the "before and after" leveling of the team's workload.
-         2. Team Member Cards -> Goal: Inform/Organize -> Filterable CSS Grid Layout -> Interaction: Category filters (All, Assigned, Maintained) -> Justification: Allows managers to quickly isolate members who took on new work versus those kept at their current capacity.
-         3. Project Master List -> Goal: Inform -> Interactive HTML Table -> Interaction: Row hover highlights -> Justification: Clean, structured presentation for tabular reference data. Confirming NO SVG/Mermaid. -->
-    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
-
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700&display=swap');
-        
-        body {
-            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, 'Helvetica Neue', 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', sans-serif;
-            background-color: #f5f5f4; /* Tailwind stone-100 */
-            color: #292524; /* Tailwind stone-800 */
-            scroll-behavior: smooth;
-        }
-
-        /* Strict Chart Container Styling */
-        .chart-container {
-            position: relative;
-            width: 100%;
-            max-width: 1000px; 
-            margin-left: auto;
-            margin-right: auto;
-            height: 40vh; 
-            min-height: 320px;
-            max-height: 450px; 
-        }
-
-        @media (max-width: 768px) {
-            .chart-container {
-                height: 35vh;
-                min-height: 280px;
-            }
-        }
-
-        /* Custom Scrollbar */
-        ::-webkit-scrollbar {
-            width: 6px;
-            height: 6px;
-        }
-        ::-webkit-scrollbar-track {
-            background: transparent; 
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #d6d3d1; 
-            border-radius: 3px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #a8a29e; 
-        }
-
-        .card-transition {
-            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-        }
-        .card-transition:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-        }
-        
-        .fade-in {
-            animation: fadeIn 0.4s ease-in-out;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
+        @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@400;600;700&display=swap');
+        body { font-family: 'Pretendard', sans-serif; background-color: #f3f4f6; color: #1f2937; }
+        .glass-card { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px); border-radius: 1.25rem; border: 1px solid rgba(255, 255, 255, 0.3); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
+        .input-style { border: 1px solid #e5e7eb; border-radius: 0.5rem; padding: 0.5rem 0.75rem; transition: all 0.2s; font-size: 0.875rem; }
+        .input-style:focus { border-color: #6366f1; ring: 2px; outline: none; }
+        .btn-primary { background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); color: white; transition: transform 0.1s, opacity 0.2s; }
+        .btn-primary:active { transform: scale(0.98); }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #d1d5db; border-radius: 10px; }
     </style>
 </head>
-<body class="antialiased">
+<body class="min-h-screen py-6 px-4 md:px-8 lg:px-12">
 
-    <!-- Navigation -->
-    <nav class="bg-white border-b border-stone-200 sticky top-0 z-50 shadow-sm opacity-95 backdrop-blur-md">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between h-16">
-                <div class="flex items-center gap-2">
-                    <span class="text-2xl">⚖️</span>
-                    <span class="font-bold text-xl tracking-tight text-stone-800">Team Optimizer</span>
+    <div class="max-w-7xl mx-auto">
+        <!-- 상단 헤더 -->
+        <header class="flex flex-col md:flex-row justify-between items-center mb-10 gap-4">
+            <div class="flex items-center gap-3">
+                <div class="p-3 bg-indigo-600 rounded-2xl shadow-lg">
+                    <i class="fas fa-balance-scale text-white text-2xl"></i>
                 </div>
-                <div class="hidden sm:flex sm:items-center sm:space-x-8">
-                    <a href="#overview" class="text-stone-500 hover:text-indigo-600 font-medium transition-colors">로드 밸런싱 현황</a>
-                    <a href="#members" class="text-stone-500 hover:text-indigo-600 font-medium transition-colors">팀원별 상세</a>
-                    <a href="#projects" class="text-stone-500 hover:text-indigo-600 font-medium transition-colors">신규 프로젝트</a>
+                <div>
+                    <h1 class="text-2xl font-extrabold tracking-tight text-slate-800">Team Optimizer</h1>
+                    <p class="text-sm text-slate-500 font-medium">실전 데이터 입력 및 업무 최적화 배정 도구</p>
                 </div>
             </div>
-        </div>
-    </nav>
-
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-20">
-
-        <!-- Header -->
-        <header class="text-center max-w-3xl mx-auto">
-            <h1 class="text-3xl md:text-4xl font-extrabold text-stone-900 mb-4 tracking-tight">팀원 업무 로드 및 신규 프로젝트 배정</h1>
-            <p class="text-lg text-stone-600 leading-relaxed">
-                현재 10명의 팀원들이 가진 기존 업무 부하를 진단하고, 이를 기반으로 10개의 신규 프로젝트를 재배분한 결과입니다. 특정 인원에게 편중되었던 업무를 분산시켜 팀 전체의 가동률을 최적화했습니다.
-            </p>
+            <div class="flex gap-2">
+                <button onclick="resetAllData()" class="px-4 py-2 text-xs font-semibold text-slate-400 hover:text-rose-600 transition flex items-center gap-2">
+                    <i class="fas fa-rotate-left"></i> 데이터 초기화
+                </button>
+                <div id="save-status" class="px-4 py-2 bg-emerald-50 text-emerald-700 rounded-full text-xs font-bold border border-emerald-100">
+                    <i class="fas fa-cloud-upload-alt mr-1"></i> 데이터 자동 저장 중
+                </div>
+            </div>
         </header>
 
-        <!-- Section 1: Overview Chart -->
-        <section id="overview" class="scroll-mt-24">
-            <div class="bg-white rounded-2xl shadow-sm border border-stone-200 p-6 md:p-8">
-                <div class="mb-6 flex flex-col md:flex-row md:justify-between md:items-end gap-4 border-b border-stone-100 pb-4">
-                    <div>
-                        <h2 class="text-2xl font-bold text-stone-800 flex items-center gap-2">
-                            <span>📊</span> 배정 전/후 업무 로드 비교
-                        </h2>
-                        <p class="mt-2 text-stone-500 text-sm">
-                            프로젝트 배정 전(현재 로드)과 배정 후(예상 최종 로드)의 변화를 보여줍니다. 여유 인력에게 신규 프로젝트를 할당하여 팀 전반의 평균 로드가 상향 평준화된 것을 확인할 수 있습니다.
-                        </p>
-                    </div>
-                    <button id="toggleSortBtn" class="shrink-0 bg-stone-100 hover:bg-stone-200 text-stone-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors border border-stone-200 flex items-center gap-2">
-                        <span>🔄</span> 정렬: 이름순
-                    </button>
-                </div>
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            
+            <!-- 왼쪽: 데이터 입력 섹션 -->
+            <div class="lg:col-span-4 space-y-6">
                 
-                <!-- Chart Container -->
-                <div class="chart-container">
-                    <canvas id="workloadChart"></canvas>
-                </div>
-            </div>
-        </section>
+                <!-- 팀원 설정 -->
+                <section class="glass-card p-6 border-t-4 border-indigo-500">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="font-bold text-lg flex items-center gap-2">
+                            <i class="fas fa-users text-indigo-500"></i> 팀원 관리
+                        </h2>
+                        <span id="member-count" class="text-xs font-bold bg-indigo-100 text-indigo-700 px-2 py-1 rounded">0명</span>
+                    </div>
+                    <div class="grid grid-cols-5 gap-2 mb-4">
+                        <input id="m-name" type="text" placeholder="이름" class="col-span-3 input-style">
+                        <input id="m-load" type="number" placeholder="기존%" class="col-span-2 input-style">
+                    </div>
+                    <button onclick="addMember()" class="w-full btn-primary py-2 rounded-lg font-bold text-sm shadow-md mb-4">
+                        <i class="fas fa-plus mr-1"></i> 팀원 등록
+                    </button>
+                    <div id="member-list" class="space-y-2 max-h-48 overflow-y-auto custom-scrollbar">
+                        <!-- 멤버 리스트 동적 생성 -->
+                    </div>
+                </section>
 
-        <!-- Section 2: Team Member Details -->
-        <section id="members" class="scroll-mt-24">
-            <div class="mb-6">
-                <h2 class="text-2xl font-bold text-stone-800 flex items-center gap-2">
-                    <span>🧑‍💻</span> 팀원별 상세 배정 내역
-                </h2>
-                <p class="mt-2 text-stone-500 text-sm">
-                    각 개인별 세부 데이터입니다. 기존의 주요 업무와 새롭게 부여된 프로젝트를 확인하세요. 상단의 필터를 통해 신규 배정자와 현상 유지자를 구분하여 볼 수 있습니다.
-                </p>
-            </div>
+                <!-- 프로젝트 설정 -->
+                <section class="glass-card p-6 border-t-4 border-rose-500">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="font-bold text-lg flex items-center gap-2">
+                            <i class="fas fa-rocket text-rose-500"></i> 신규 프로젝트 배정
+                        </h2>
+                        <span id="project-count" class="text-xs font-bold bg-rose-100 text-rose-700 px-2 py-1 rounded">0개</span>
+                    </div>
+                    <div class="grid grid-cols-5 gap-2 mb-4">
+                        <input id="p-name" type="text" placeholder="프로젝트명" class="col-span-3 input-style">
+                        <input id="p-load" type="number" placeholder="부하%" class="col-span-2 input-style">
+                    </div>
+                    <button onclick="addProject()" class="w-full bg-rose-500 hover:bg-rose-600 text-white py-2 rounded-lg font-bold text-sm shadow-md mb-4">
+                        <i class="fas fa-plus mr-1"></i> 프로젝트 추가
+                    </button>
+                    <div id="project-list" class="space-y-2 max-h-48 overflow-y-auto custom-scrollbar">
+                        <!-- 프로젝트 리스트 동적 생성 -->
+                    </div>
+                </section>
 
-            <!-- Filters -->
-            <div class="flex flex-wrap gap-2 mb-8" id="memberFilters">
-                <button data-filter="all" class="filter-btn active px-4 py-2 rounded-full text-sm font-bold bg-indigo-600 text-white shadow-sm transition-all">전체 보기</button>
-                <button data-filter="assigned" class="filter-btn px-4 py-2 rounded-full text-sm font-medium bg-white text-stone-600 border border-stone-300 hover:bg-stone-50 transition-all">신규 프로젝트 추가 배정 (7명)</button>
-                <button data-filter="maintained" class="filter-btn px-4 py-2 rounded-full text-sm font-medium bg-white text-stone-600 border border-stone-300 hover:bg-stone-50 transition-all">기존 로드 유지 (3명)</button>
-            </div>
-
-            <!-- Member Grid -->
-            <div id="memberGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <!-- Injected via JS -->
-            </div>
-        </section>
-
-        <!-- Section 3: Project Master List -->
-        <section id="projects" class="scroll-mt-24">
-            <div class="bg-white rounded-2xl shadow-sm border border-stone-200 overflow-hidden">
-                <div class="p-6 md:p-8 border-b border-stone-100 bg-stone-50/50">
-                    <h2 class="text-2xl font-bold text-stone-800 flex items-center gap-2">
-                        <span>📋</span> 신규 프로젝트 마스터 리스트
-                    </h2>
-                    <p class="mt-2 text-stone-500 text-sm">
-                        이번 달 착수되는 총 10개의 신규 프로젝트 목록 및 담당자입니다.
+                <div class="p-4 bg-slate-800 rounded-2xl text-white shadow-xl">
+                    <h3 class="font-bold text-sm mb-1 flex items-center gap-2">
+                        <i class="fas fa-lightbulb text-yellow-400"></i> 사용 팁
+                    </h3>
+                    <p class="text-[11px] leading-relaxed opacity-80">
+                        팀원들의 현재 업무량(%)과 새로 들어온 프로젝트의 예상 부하(%)를 입력하세요. 알고리즘이 가장 여유로운 팀원에게 일을 자동 배정합니다.
                     </p>
                 </div>
-
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left border-collapse">
-                        <thead>
-                            <tr class="bg-white border-b border-stone-200 text-sm">
-                                <th class="py-4 px-6 font-semibold text-stone-600 whitespace-nowrap w-24">ID</th>
-                                <th class="py-4 px-6 font-semibold text-stone-600 whitespace-nowrap min-w-[200px]">프로젝트명</th>
-                                <th class="py-4 px-6 font-semibold text-stone-600 whitespace-nowrap">주요 내용</th>
-                                <th class="py-4 px-6 font-semibold text-stone-600 whitespace-nowrap w-32">담당자</th>
-                            </tr>
-                        </thead>
-                        <tbody id="projectTableBody" class="text-stone-700 divide-y divide-stone-100 bg-white">
-                            <!-- Injected via JS -->
-                        </tbody>
-                    </table>
-                </div>
             </div>
-        </section>
 
-    </main>
-
-    <footer class="bg-stone-900 text-stone-400 py-10 mt-12 text-center text-sm">
-        <p>Team Workload Balancer SPA &copy; 2026. Designed for optimal resource management.</p>
-    </footer>
-
-    <!-- JavaScript Logic -->
-    <script>
-        // 1. Data Parsing (From Source Report)
-        const rawTeamData = [
-            { name: "김팀원", currentLoad: 90, existingTask: "A사 유지보수, 운영", newProjects: [], reason: "현재 가동률 포화 상태로 기존 업무 집중", expectedLoad: 90 },
-            { name: "이팀원", currentLoad: 35, existingTask: "정기 보고서 작성", newProjects: ["P1", "P2"], reason: "낮은 로드로 인해 핵심 기획 업무 2건 부여", expectedLoad: 85 },
-            { name: "박팀원", currentLoad: 65, existingTask: "플랫폼 UI 개선", newProjects: ["P3"], reason: "적정 수준의 로드 유지를 위해 1건 배정", expectedLoad: 85 },
-            { name: "최팀원", currentLoad: 85, existingTask: "연간 결산 및 감사", newProjects: [], reason: "단기 집중 업무 기간으로 추가 업무 배제", expectedLoad: 85 },
-            { name: "정팀원", currentLoad: 30, existingTask: "데이터 단순 백업", newProjects: ["P4", "P5"], reason: "가용 시간이 많아 기술적 난이도 있는 2건 부여", expectedLoad: 80 },
-            { name: "강팀원", currentLoad: 60, existingTask: "고객 기술 지원", newProjects: ["P6"], reason: "기존 업무와 시너지가 나는 업무 1건 배정", expectedLoad: 80 },
-            { name: "조팀원", currentLoad: 45, existingTask: "홍보 콘텐츠 제작", newProjects: ["P7", "P8"], reason: "업무 숙련도 대비 로드 낮음, 연관 업무 2건 부여", expectedLoad: 85 },
-            { name: "윤팀원", currentLoad: 80, existingTask: "인프라 서버 관리", newProjects: [], reason: "시스템 안정화 기간으로 신규 배정 제외", expectedLoad: 80 },
-            { name: "장팀원", currentLoad: 55, existingTask: "제휴사 커뮤니케이션", newProjects: ["P9"], reason: "외부 미팅 잦은 특성을 고려하여 1건 배정", expectedLoad: 75 },
-            { name: "임팀원", currentLoad: 50, existingTask: "사내 전산 지원", newProjects: ["P10"], reason: "내부 프로세스 개선을 위한 프로젝트 배정", expectedLoad: 75 }
-        ];
-
-        const projectData = [
-            { id: "P1", name: "신규 서비스 전략 기획", assignee: "이팀원", desc: "비즈니스 모델 수립 및 전략 수립" },
-            { id: "P2", name: "시장 트렌드 분석 리포트", assignee: "이팀원", desc: "경쟁사 동향 및 시장 점유율 분석" },
-            { id: "P3", name: "플랫폼 프런트엔드 리뉴얼", assignee: "박팀원", desc: "사용자 인터페이스(UI) 최신화" },
-            { id: "P4", name: "데이터베이스 구조 최적화", assignee: "정팀원", desc: "쿼리 성능 개선 및 인덱스 정렬" },
-            { id: "P5", name: "보안 프로토콜 업데이트", assignee: "정팀원", desc: "시스템 보안 취약점 보완" },
-            { id: "P6", name: "고객 서비스 표준 매뉴얼 제작", assignee: "강팀원", desc: "CS 대응 프로세스 표준화" },
-            { id: "P7", name: "소셜 미디어 통합 마케팅", assignee: "조팀원", desc: "채널별 통합 홍보 전략 실행" },
-            { id: "P8", name: "시즌 프로모션 페이지 제작", assignee: "조팀원", desc: "이벤트성 웹페이지 디자인 및 개발" },
-            { id: "P9", name: "신규 파트너십 채널 확장", assignee: "장팀원", desc: "잠재 파트너사 발굴 및 계약 협상" },
-            { id: "P10", name: "사내 워크플로우 자동화 시스템", assignee: "임팀원", desc: "반복 업무 자동화 툴 구축" }
-        ];
-
-        // 2. State Management
-        const state = {
-            chartSortedByLoad: false,
-            memberFilter: 'all' // 'all', 'assigned', 'maintained'
-        };
-
-        let workloadChartInstance = null;
-
-        // 3. Core Functions
-
-        // Helper: Get color based on load percentage
-        function getLoadColor(load) {
-            if (load >= 85) return 'text-rose-600 bg-rose-50 border-rose-200'; // High load
-            if (load >= 70) return 'text-indigo-600 bg-indigo-50 border-indigo-200'; // Optimal/Mid load
-            return 'text-teal-600 bg-teal-50 border-teal-200'; // Low load
-        }
-        function getChartColor(load) {
-            if (load >= 85) return 'rgba(225, 29, 72, 0.85)'; // rose-600
-            if (load >= 70) return 'rgba(79, 70, 229, 0.85)'; // indigo-600
-            return 'rgba(13, 148, 136, 0.85)'; // teal-600
-        }
-
-        // Render Chart.js
-        function renderChart() {
-            const ctx = document.getElementById('workloadChart').getContext('2d');
-            
-            // Prepare data based on sort state
-            let displayData = [...rawTeamData];
-            if (state.chartSortedByLoad) {
-                displayData.sort((a, b) => b.expectedLoad - a.expectedLoad);
-            }
-
-            const labels = displayData.map(d => d.name);
-            const currentData = displayData.map(d => d.currentLoad);
-            const expectedData = displayData.map(d => d.expectedLoad);
-
-            if (workloadChartInstance) {
-                workloadChartInstance.destroy();
-            }
-
-            Chart.defaults.font.family = "'Pretendard', sans-serif";
-            Chart.defaults.color = '#78716c'; // stone-500
-
-            workloadChartInstance = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: labels,
-                    datasets: [
-                        {
-                            label: '현재 로드 (%)',
-                            data: currentData,
-                            backgroundColor: 'rgba(214, 211, 209, 0.5)', // stone-300
-                            borderColor: 'rgba(168, 162, 158, 1)', // stone-400
-                            borderWidth: 1,
-                            borderRadius: 4,
-                            barPercentage: 0.6,
-                            categoryPercentage: 0.8
-                        },
-                        {
-                            label: '예상 최종 로드 (%)',
-                            data: expectedData,
-                            backgroundColor: expectedData.map(val => getChartColor(val)),
-                            borderRadius: 4,
-                            barPercentage: 0.6,
-                            categoryPercentage: 0.8
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false, // CRITICAL: Allows CSS to control height
-                    plugins: {
-                        legend: {
-                            position: 'top',
-                            labels: { usePointStyle: true, boxWidth: 8, padding: 20 }
-                        },
-                        tooltip: {
-                            backgroundColor: 'rgba(28, 25, 23, 0.9)', // stone-900
-                            titleFont: { size: 14, weight: 'bold' },
-                            bodyFont: { size: 13 },
-                            padding: 12,
-                            cornerRadius: 8,
-                            callbacks: {
-                                label: function(context) {
-                                    return ` ${context.dataset.label}: ${context.raw}%`;
-                                }
-                            }
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            max: 100,
-                            grid: { color: 'rgba(231, 229, 228, 0.6)', drawBorder: false }, // stone-200
-                            ticks: { stepSize: 20, callback: value => value + '%' }
-                        },
-                        x: {
-                            grid: { display: false },
-                            ticks: { font: { weight: '600' } }
-                        }
-                    },
-                    interaction: {
-                        mode: 'index',
-                        intersect: false,
-                    }
-                }
-            });
-        }
-
-        // Render Team Member Grid
-        function renderTeamGrid() {
-            const grid = document.getElementById('memberGrid');
-            grid.innerHTML = '';
-
-            let filteredData = rawTeamData;
-            if (state.memberFilter === 'assigned') {
-                filteredData = rawTeamData.filter(d => d.newProjects.length > 0);
-            } else if (state.memberFilter === 'maintained') {
-                filteredData = rawTeamData.filter(d => d.newProjects.length === 0);
-            }
-
-            filteredData.forEach(member => {
-                const loadColorClass = getLoadColor(member.expectedLoad);
-                const isAssigned = member.newProjects.length > 0;
+            <!-- 오른쪽: 분석 및 결과 섹션 -->
+            <div class="lg:col-span-8 space-y-6">
                 
-                // HTML for project tags
-                let projectTagsHTML = '<span class="text-stone-400 text-sm italic">추가 배정 없음</span>';
-                if (isAssigned) {
-                    projectTagsHTML = member.newProjects.map(p => 
-                        `<span class="inline-block px-2 py-1 bg-indigo-100 text-indigo-700 text-xs font-bold rounded mr-1 mb-1 border border-indigo-200">${p}</span>`
-                    ).join('');
-                }
-
-                // Progress Bar Widths
-                const currentWidth = `${member.currentLoad}%`;
-                const finalWidth = `${member.expectedLoad}%`;
-
-                const cardHTML = `
-                    <div class="bg-white rounded-xl shadow-sm border border-stone-200 p-6 flex flex-col h-full card-transition fade-in">
-                        <!-- Card Header -->
-                        <div class="flex justify-between items-start mb-5 pb-4 border-b border-stone-100">
-                            <div class="flex items-center gap-3">
-                                <div class="w-10 h-10 rounded-full bg-stone-100 flex items-center justify-center font-bold text-stone-500 border border-stone-200">
-                                    ${member.name.charAt(0)}
-                                </div>
-                                <div>
-                                    <h3 class="text-lg font-bold text-stone-800">${member.name}</h3>
-                                    <span class="text-xs font-medium text-stone-500">
-                                        ${isAssigned ? '✨ 신규 업무 배정됨' : '🛡️ 기존 업무 집중'}
-                                    </span>
-                                </div>
-                            </div>
-                            <div class="text-right">
-                                <div class="text-[10px] text-stone-400 font-semibold uppercase tracking-wider mb-0.5">최종 로드</div>
-                                <div class="text-xl font-black ${loadColorClass.split(' ')[0]}">${member.expectedLoad}%</div>
-                            </div>
-                        </div>
-
-                        <!-- Progress Bars -->
-                        <div class="mb-5 space-y-3 flex-none">
-                            <div class="relative">
-                                <div class="flex justify-between text-xs mb-1">
-                                    <span class="text-stone-500">현재</span>
-                                    <span class="font-medium text-stone-700">${member.currentLoad}%</span>
-                                </div>
-                                <div class="w-full bg-stone-100 rounded-full h-1.5">
-                                    <div class="h-1.5 rounded-full bg-stone-400" style="width: ${currentWidth}"></div>
-                                </div>
-                            </div>
-                            <div class="relative">
-                                <div class="flex justify-between text-xs mb-1">
-                                    <span class="text-stone-500 font-medium">예상 최종</span>
-                                    <span class="font-bold ${loadColorClass.split(' ')[0]}">${member.expectedLoad}%</span>
-                                </div>
-                                <div class="w-full bg-stone-100 rounded-full h-1.5">
-                                    <div class="h-1.5 rounded-full ${loadColorClass.split(' ')[1]}" style="width: ${finalWidth}"></div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Tasks Details -->
-                        <div class="flex-grow space-y-4">
-                            <div class="bg-stone-50 rounded p-3 border border-stone-100">
-                                <div class="text-xs font-semibold text-stone-500 mb-1">기존 주요 업무</div>
-                                <div class="text-sm text-stone-800">${member.existingTask}</div>
-                            </div>
-                            <div>
-                                <div class="text-xs font-semibold text-stone-500 mb-2">신규 할당 프로젝트 ID</div>
-                                <div>${projectTagsHTML}</div>
-                            </div>
-                        </div>
-
-                        <!-- Reason -->
-                        <div class="mt-4 pt-4 border-t border-stone-100 text-sm flex-none">
-                            <span class="font-semibold text-stone-700 block mb-1">📝 배정 사유</span>
-                            <span class="text-stone-600 leading-snug">${member.reason}</span>
+                <!-- 차트 섹션 -->
+                <section class="glass-card p-6">
+                    <div class="flex justify-between items-end mb-6">
+                        <div>
+                            <h2 class="text-xl font-bold text-slate-800">📊 실시간 로드 밸런싱 분석</h2>
+                            <p class="text-sm text-slate-500">배정 전과 배정 후의 예상 부하 변화를 한눈에 확인하세요.</p>
                         </div>
                     </div>
-                `;
-                grid.insertAdjacentHTML('beforeend', cardHTML);
-            });
+                    
+                    <div class="h-80 w-full relative">
+                        <canvas id="optimizationChart"></canvas>
+                    </div>
+
+                    <div id="insight-box" class="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <!-- 분석 결과 요약 동적 생성 -->
+                    </div>
+                </section>
+
+                <!-- 배정 상세 내역 -->
+                <section class="glass-card p-6 overflow-hidden">
+                    <h2 class="text-lg font-bold mb-4 flex items-center gap-2">
+                        <i class="fas fa-clipboard-list text-slate-400"></i> 최종 배정 리포트
+                    </h2>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm text-left text-slate-500">
+                            <thead class="text-xs text-slate-700 uppercase bg-slate-50">
+                                <tr>
+                                    <th class="px-6 py-3 rounded-l-lg">팀원</th>
+                                    <th class="px-6 py-3">기본 로드</th>
+                                    <th class="px-6 py-3 text-indigo-600 font-bold">최종 로드</th>
+                                    <th class="px-6 py-3 rounded-r-lg">배정 프로젝트</th>
+                                </tr>
+                            </thead>
+                            <tbody id="result-table-body">
+                                <!-- 테이블 내용 동적 생성 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- 데이터 관리부 ---
+        let team = JSON.parse(localStorage.getItem('final_opt_team')) || [];
+        let projects = JSON.parse(localStorage.getItem('final_opt_projects')) || [];
+        let myChart = null;
+
+        // 초기 시작
+        function init() {
+            renderTeam();
+            renderProjects();
+            optimizeDistribution();
         }
 
-        // Render Projects Table
-        function renderProjectList() {
-            const tbody = document.getElementById('projectTableBody');
-            tbody.innerHTML = '';
-
-            projectData.forEach(p => {
-                const rowHTML = `
-                    <tr class="hover:bg-stone-50 transition-colors group cursor-default">
-                        <td class="py-3 px-6 border-b border-stone-100">
-                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-stone-100 text-stone-600 border border-stone-200">
-                                ${p.id}
-                            </span>
-                        </td>
-                        <td class="py-3 px-6 border-b border-stone-100 font-semibold text-stone-800 group-hover:text-indigo-600 transition-colors">
-                            ${p.name}
-                        </td>
-                        <td class="py-3 px-6 border-b border-stone-100 text-sm text-stone-600">
-                            ${p.desc}
-                        </td>
-                        <td class="py-3 px-6 border-b border-stone-100">
-                            <span class="text-sm font-medium text-stone-700 bg-white border border-stone-200 shadow-sm px-2.5 py-1 rounded-full">
-                                ${p.assignee}
-                            </span>
-                        </td>
-                    </tr>
-                `;
-                tbody.insertAdjacentHTML('beforeend', rowHTML);
-            });
+        // 로컬 브라우저에 저장
+        function saveToLocal() {
+            localStorage.setItem('final_opt_team', JSON.stringify(team));
+            localStorage.setItem('final_opt_projects', JSON.stringify(projects));
+            const statusEl = document.getElementById('save-status');
+            statusEl.innerHTML = '<i class="fas fa-check-circle mr-1"></i> 데이터 안전하게 저장됨';
+            setTimeout(() => {
+                statusEl.innerHTML = '<i class="fas fa-cloud-upload-alt mr-1"></i> 데이터 자동 저장 중';
+            }, 3000);
         }
 
-        // Setup Event Listeners
-        function setupEventListeners() {
-            // Chart sorting toggle
-            const toggleBtn = document.getElementById('toggleSortBtn');
-            toggleBtn.addEventListener('click', () => {
-                state.chartSortedByLoad = !state.chartSortedByLoad;
-                
-                if (state.chartSortedByLoad) {
-                    toggleBtn.innerHTML = '<span>🔄</span> 정렬: 로드순';
-                    toggleBtn.classList.replace('bg-stone-100', 'bg-indigo-50');
-                    toggleBtn.classList.replace('text-stone-700', 'text-indigo-700');
-                    toggleBtn.classList.replace('border-stone-200', 'border-indigo-200');
-                } else {
-                    toggleBtn.innerHTML = '<span>🔄</span> 정렬: 이름순';
-                    toggleBtn.classList.replace('bg-indigo-50', 'bg-stone-100');
-                    toggleBtn.classList.replace('text-indigo-700', 'text-stone-700');
-                    toggleBtn.classList.replace('border-indigo-200', 'border-stone-200');
+        // --- 팀원 관리 ---
+        function addMember() {
+            const name = document.getElementById('m-name').value;
+            const load = parseInt(document.getElementById('m-load').value);
+            if(!name || isNaN(load)) return;
+            team.push({ id: Date.now(), name, load });
+            document.getElementById('m-name').value = '';
+            document.getElementById('m-load').value = '';
+            renderTeam();
+            saveToLocal();
+            optimizeDistribution();
+        }
+
+        function deleteMember(id) {
+            team = team.filter(m => m.id !== id);
+            renderTeam();
+            saveToLocal();
+            optimizeDistribution();
+        }
+
+        function renderTeam() {
+            const list = document.getElementById('member-list');
+            document.getElementById('member-count').innerText = `${team.length}명`;
+            list.innerHTML = team.map(m => `
+                <div class="flex justify-between items-center p-3 bg-white border border-slate-100 rounded-xl">
+                    <span class="text-sm font-semibold">${m.name} <span class="text-xs text-slate-400 font-normal">(${m.load}%)</span></span>
+                    <button onclick="deleteMember(${m.id})" class="text-slate-300 hover:text-red-500 transition"><i class="fas fa-times"></i></button>
+                </div>
+            `).join('');
+        }
+
+        // --- 프로젝트 관리 ---
+        function addProject() {
+            const name = document.getElementById('p-name').value;
+            const load = parseInt(document.getElementById('p-load').value);
+            if(!name || isNaN(load)) return;
+            projects.push({ id: Date.now(), name, load });
+            document.getElementById('p-name').value = '';
+            document.getElementById('p-load').value = '';
+            renderProjects();
+            saveToLocal();
+            optimizeDistribution();
+        }
+
+        function deleteProject(id) {
+            projects = projects.filter(p => p.id !== id);
+            renderProjects();
+            saveToLocal();
+            optimizeDistribution();
+        }
+
+        function renderProjects() {
+            const list = document.getElementById('project-list');
+            document.getElementById('project-count').innerText = `${projects.length}개`;
+            list.innerHTML = projects.map(p => `
+                <div class="flex justify-between items-center p-3 bg-white border border-slate-100 rounded-xl">
+                    <span class="text-sm font-semibold text-slate-600">${p.name} <span class="text-xs text-rose-400 font-normal">(${p.load}%)</span></span>
+                    <button onclick="deleteProject(${p.id})" class="text-slate-300 hover:text-red-500 transition"><i class="fas fa-times"></i></button>
+                </div>
+            `).join('');
+        }
+
+        function resetAllData() {
+            if(confirm('모든 데이터를 초기화하시겠습니까? 입력한 팀원 정보가 삭제됩니다.')) {
+                localStorage.clear();
+                location.reload();
+            }
+        }
+
+        // --- 핵심 최적화 엔진 ---
+        function optimizeDistribution() {
+            if(team.length === 0) {
+                if(myChart) myChart.destroy();
+                document.getElementById('result-table-body').innerHTML = '<tr><td colspan="4" class="py-10 text-center text-slate-400">팀원 정보를 먼저 입력해 주세요.</td></tr>';
+                return;
+            }
+
+            let results = team.map(m => ({ ...m, finalLoad: m.load, assignedProjects: [] }));
+            const sortedProjects = [...projects].sort((a, b) => b.load - a.load);
+
+            sortedProjects.forEach(p => {
+                results.sort((a, b) => a.finalLoad - b.finalLoad);
+                results[0].finalLoad += p.load;
+                results[0].assignedProjects.push(p.name);
+            });
+
+            results.sort((a, b) => a.name.localeCompare(b.name));
+            updateUI(results);
+        }
+
+        function updateUI(results) {
+            // 차트 업데이트
+            const ctx = document.getElementById('optimizationChart').getContext('2d');
+            if(myChart) myChart.destroy();
+            myChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: results.map(r => r.name),
+                    datasets: [
+                        { label: '기존 로드', data: results.map(r => r.load), backgroundColor: '#e2e8f0', borderRadius: 8 },
+                        { label: '최종 로드', data: results.map(r => r.finalLoad), backgroundColor: '#6366f1', borderRadius: 8 }
+                    ]
+                },
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: false,
+                    scales: { y: { beginAtZero: true, grid: { color: '#f1f5f9' } }, x: { grid: { display: false } } },
+                    plugins: { legend: { display: false } }
                 }
-                renderChart();
             });
 
-            // Member filtering
-            const filterBtns = document.querySelectorAll('.filter-btn');
-            filterBtns.forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    // Update Active Styles
-                    filterBtns.forEach(b => {
-                        b.classList.remove('bg-indigo-600', 'text-white', 'shadow-sm');
-                        b.classList.add('bg-white', 'text-stone-600');
-                    });
-                    e.target.classList.remove('bg-white', 'text-stone-600');
-                    e.target.classList.add('bg-indigo-600', 'text-white', 'shadow-sm');
+            // 인사이트 카드
+            const avg = results.reduce((a, b) => a + b.finalLoad, 0) / results.length;
+            const max = Math.max(...results.map(r => r.finalLoad));
+            const dev = max - Math.min(...results.map(r => r.finalLoad));
 
-                    // Update State and Re-render Grid
-                    state.memberFilter = e.target.getAttribute('data-filter');
-                    renderTeamGrid();
-                });
-            });
+            document.getElementById('insight-box').innerHTML = `
+                <div class="p-4 bg-indigo-50 rounded-xl border border-indigo-100">
+                    <p class="text-xs text-indigo-500 font-bold mb-1">평균 업무 부하</p>
+                    <p class="text-2xl font-black text-indigo-700">${avg.toFixed(1)}%</p>
+                </div>
+                <div class="p-4 bg-rose-50 rounded-xl border border-rose-100">
+                    <p class="text-xs text-rose-500 font-bold mb-1">최대 부하 팀원</p>
+                    <p class="text-2xl font-black text-rose-700">${max}%</p>
+                </div>
+                <div class="p-4 bg-slate-100 rounded-xl border border-slate-200">
+                    <p class="text-xs text-slate-500 font-bold mb-1">업무 균등 수준</p>
+                    <p class="text-lg font-black text-slate-700">${dev <= 20 ? '최적 ✨' : '조정 필요 ⚖️'}</p>
+                </div>
+            `;
+
+            // 테이블 업데이트
+            document.getElementById('result-table-body').innerHTML = results.map(r => `
+                <tr class="border-b border-slate-50 hover:bg-slate-50 transition">
+                    <td class="px-6 py-4 font-bold text-slate-800">${r.name}</td>
+                    <td class="px-6 py-4 text-slate-400">${r.load}%</td>
+                    <td class="px-6 py-4 font-black text-indigo-600">${r.finalLoad}%</td>
+                    <td class="px-6 py-4">
+                        ${r.assignedProjects.length > 0 
+                            ? r.assignedProjects.map(p => `<span class="inline-block bg-indigo-100 text-indigo-600 text-[10px] px-2 py-0.5 rounded-full mr-1 mb-1">${p}</span>`).join('')
+                            : '<span class="text-slate-300 text-xs">배정 없음</span>'}
+                    </td>
+                </tr>
+            `).join('');
         }
 
-        // 4. Initialization
-        window.addEventListener('DOMContentLoaded', () => {
-            renderChart();
-            renderTeamGrid();
-            renderProjectList();
-            setupEventListeners();
-        });
+        window.onload = init;
     </script>
 </body>
 </html>
